@@ -1,0 +1,34 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --ring-focus: 2px solid #C9722A;
+}
+
+* {
+  border-color: #D8D0BE;
+}
+
+::selection {
+  background: #C9722A;
+  color: #F6F2E9;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+  outline: var(--ring-focus);
+  outline-offset: 2px;
+}
+
+.stamp {
+  transform: rotate(-2deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
