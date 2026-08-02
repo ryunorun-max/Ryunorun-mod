@@ -1,0 +1,285 @@
+
+Claude selesai merespons
+File: src/app/layout.js
+
+import { Fraunces, JetBrains_Mono } from "next/font/google";
+import "./globals.css";
+
+const fraunces = Fraunces({
+subsets: ["latin"],
+weight: ["400", "500", "600", "700", "900"],
+style: ["normal", "italic"],
+variable: "--font-fraunces",
+display: "swap",
+});
+
+const jetbrains = JetBrains_Mono({
+subsets: ["latin"],
+weight: ["400", "500", "700"],
+variable: "--font-jetbrains",
+display: "swap",
+});
+
+export const metadata = {
+title: "Rilis — Katalog Aplikasi",
+description: "Katalog aplikasi dan game buatan sendiri.",
+};
+
+export default function RootLayout({ children }) {
+return (
+<html lang="id" className={${fraunces.variable} ${jetbrains.variable}}>
+<body className="bg-paper text-ink font-mono antialiased">
+{children}
+</body>
+</html>
+);
+}
+
+File: src/app/globals.css
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+--ring-focus: 2px solid 
+#C9722A;
+}
+
+{
+border-color: 
+#D8D0BE;
+}
+::selection {
+background: 
+#C9722A;
+color: 
+#F6F2E9;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+outline: var(--ring-focus);
+outline-offset: 2px;
+}
+
+.stamp {
+transform: rotate(-2deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+{
+animation: none !important;
+transition: none !important;
+}
+}
+File: src/app/page.js
+
+import { supabase } from "@/lib/supabaseClient";
+import Catalog from "@/components/Catalog";
+
+export const revalidate = 30;
+
+export default async function HomePage() {
+const { data: mods, error } = await supabase
+.from("mods")
+.select("*")
+.eq("status", "active")
+.order("created_at", { ascending: false });
+
+return (
+<main className="mx-auto min-h-screen max-w-6xl px-5 py-10 sm:px-8">
+<header className="mb-10 border-b-2 border-ink pb-6">
+<p className="mb-2 text-xs uppercase tracking-[0.25em] text-amberdark">
+Katalog Rilis
+</p>
+<h1 className="font-display text-4xl font-black italic leading-tight sm:text-5xl">
+Aplikasi & game buatan sendiri,
+<br />
+dikumpulkan di satu tempat.
+</h1>
+<p className="mt-4 max-w-xl text-sm leading-relaxed text-ink/70">
+Setiap kartu di bawah ini adalah rilis yang dibuat dan dipelihara
+sendiri — lengkap dengan versi, catatan fitur, dan tautan unduhan
+langsung.
+</p>
+</header>
+
+  {error ? (
+    <div className="rounded-sm border border-amberdark/40 bg-amber/10 p-6 text-sm text-amberdark">
+      Gagal memuat data dari Supabase: {error.message}
+      <br />
+      Pastikan environment variable sudah diisi dan tabel <code>mods</code> sudah dibuat.
+    </div>
+  ) : (
+    <Catalog mods={mods ?? []} />
+  )}
+</main>
+);
+}
+
+File: src/app/mod/[slug]/page.js
+
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { supabase } from "@/lib/supabaseClient";
+import DownloadButton from "@/components/DownloadButton";
+
+export const revalidate = 30;
+
+async function getMod(slug) {
+const { data } = await supabase
+.from("mods")
+.select("*")
+.eq("slug", slug)
+.eq("status", "active")
+.single();
+return data;
+}
+
+export default async function ModDetailPage({ params }) {
+const mod = await getMod(params.slug);
+if (!mod) notFound();
+
+const tags = (mod.tags || "").split(",").map((t) => t.trim()).filter(Boolean);
+const features = (mod.features || "")
+.split(",")
+.map((f) => f.trim())
+.filter(Boolean);
+
+return (
+<main className="mx-auto min-h-screen max-w-3xl px-5 py-10 sm:px-8">
+<Link href="/" className="mb-8 inline-block text-xs uppercase tracking-widest text-amberdark">
+← Kembali ke katalog
+</Link>
+
+  <div className="overflow-hidden rounded-sm border-2 border-ink bg-white/60 shadow-[5px_5px_0_#1C2333]">
+    {mod.image_url && (
+      <img
+        src={mod.image_url}
+        alt={mod.title}
+        className="aspect-[16/9] w-full border-b-2 border-ink object-cover"
+      />
+    )}
+
+    <div className="p-6 sm:p-8">
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {tags.map((tag) => (
+          <span
+            key={tag}
+            className="rounded-sm border border-line bg-paper px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-ink/70"
+          >
+            #{tag}
+          </span>
+        ))}
+      </div>
+
+      <h1 className="font-display text-3xl font-black italic sm:text-4xl">
+        {mod.title}
+      </h1>
+      <p className="mt-1 text-sm text-ink/60">
+        {mod.version && <span className="mr-3">Versi {mod.version}</span>}
+        oleh {mod.mod_by}
+      </p>
+
+      {features.length > 0 && (
+        <ul className="mt-6 space-y-1.5 border-t border-dashed border-line pt-5 text-sm text-ink/80">
+          {features.map((f) => (
+            <li key={f} className="flex gap-2">
+              <span className="text-amberdark">—</span> {f}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="mt-6 flex items-center gap-4 border-t border-dashed border-line pt-5 text-xs text-ink/60">
+        <span>⭐ {Number(mod.rating ?? 5).toFixed(1)} ({mod.rating_count} rating)</span>
+        <span>♥ {mod.likes ?? 0}</span>
+        <span>{mod.download_count ?? 0} unduhan</span>
+      </div>
+
+      <div className="mt-6 rounded-sm border border-line bg-paper px-4 py-3 text-xs text-ink/70">
+        🔑 Password: {mod.password}
+      </div>
+
+      <div className="mt-6 flex gap-3">
+        <DownloadButton slug={mod.slug} downloadUrl={mod.download_url} />
+      </div>
+    </div>
+  </div>
+</main>
+);
+}
+
+File: src/app/mod/[slug]/not-found.js
+
+import Link from "next/link";
+
+export default function NotFound() {
+return (
+<main className="mx-auto flex min-h-screen max-w-xl flex-col items-center justify-center px-5 text-center">
+<p className="mb-2 text-xs uppercase tracking-[0.25em] text-amberdark">404</p>
+<h1 className="font-display text-3xl font-black italic">
+Rilis ini tidak ditemukan.
+</h1>
+<p className="mt-3 text-sm text-ink/60">
+Mungkin sudah dihapus atau tautannya salah ketik.
+</p>
+<Link href="/" className="mt-6 rounded-sm border-2 border-ink bg-amber px-5 py-2.5 text-sm font-bold uppercase text-paper" >
+Kembali ke katalog
+</Link>
+</main>
+);
+}
+
+Buat biar gua bisa langsung paste
+
+
+Dipertimbangkan format file untuk kemudahan akses mobile pengguna
+Dipertimbangkan format file untuk kemudahan akses mobile pengguna
+Oke, saya bikinkan file terpisah — tinggal buka satu-satu, copy semua isinya, paste ke GitHub. Gak ada tulisan tambahan di dalamnya.
+
+
+Menjalankan 5 perintah
+Menjalankan 5 perintah
+Respons Claude terputus.
+Kamu tulis aja bir bisa aku copy
+
+Oke, ini semua tinggal di-copy langsung dari sini, gak ada tulisan tambahan:
+
+Simpan sebagai: src/app/layout.js
+
+import { Fraunces, JetBrains_Mono } from "next/font/google";
+import "./globals.css";
+
+const fraunces = Fraunces({
+subsets: ["latin"],
+weight: ["400", "500", "600", "700", "900"],
+style: ["normal", "italic"],
+variable: "--font-fraunces",
+display: "swap",
+});
+
+const jetbrains = JetBrains_Mono({
+subsets: ["latin"],
+weight: ["400", "500", "700"],
+variable: "--font-jetbrains",
+display: "swap",
+});
+
+export const metadata = {
+title: "Rilis — Katalog Aplikasi",
+description: "Katalog aplikasi dan game buatan sendiri.",
+};
+
+export default function RootLayout({ children }) {
+return (
+<html lang="id" className={${fraunces.variable} ${jetbrains.variable}}>
+<body className="bg-paper text-ink font-mono antialiased">
+{children}
+</body>
+</html>
+);
+}
